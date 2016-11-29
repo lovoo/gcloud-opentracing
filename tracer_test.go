@@ -14,6 +14,7 @@ func TestTracer(t *testing.T) {
 			WithProject("test_project"),
 			WithLogger(&defaultLogger{}),
 			WithAPIKey("test_api_key"),
+			clientOpt,
 		)
 		assert.NoError(t, err)
 		assert.NotNil(t, tracer)
