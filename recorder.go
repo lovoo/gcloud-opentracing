@@ -12,6 +12,8 @@ import (
 	cloudtracepb "google.golang.org/genproto/googleapis/devtools/cloudtrace/v1"
 )
 
+var _ basictracer.SpanRecorder = &Recorder{}
+
 // Logger defines an interface to log an error.
 type Logger interface {
 	Errorf(string, ...interface{})
@@ -35,6 +37,10 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 	if err := options.Valid(); err != nil {
 		return nil, err
 	}
+	if options.log == nil {
+		options.log = &defaultLogger{}
+	}
+
 	c, err := trace.NewClient(ctx, options.external...)
 	if err != nil {
 		return nil, err
@@ -81,12 +87,6 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 	}
 }
 
-type defaultLogger struct{}
-
-func (defaultLogger) Errorf(msg string, args ...interface{}) {
-	log.Printf(msg, args...)
-}
-
 func convertTags(tags opentracing.Tags) map[string]string {
 	labels := make(map[string]string)
 	for k, v := range tags {
@@ -98,4 +98,10 @@ func convertTags(tags opentracing.Tags) map[string]string {
 		}
 	}
 	return labels
+}
+
+type defaultLogger struct{}
+
+func (defaultLogger) Errorf(msg string, args ...interface{}) {
+	log.Printf(msg, args...)
 }

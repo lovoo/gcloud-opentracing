@@ -12,12 +12,13 @@ import (
 	basictracer "github.com/opentracing/basictracer-go"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
+	"google.golang.org/api/option"
 	cloudtracepb "google.golang.org/genproto/googleapis/devtools/cloudtrace/v1"
 	"google.golang.org/grpc"
 )
 
 var (
-	clientOpt Option
+	clientOpt option.ClientOption
 	mockTrace *mockTraceServer
 )
 
@@ -41,7 +42,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	clientOpt = WithGRPCConn(conn)
+	clientOpt = option.WithGRPCConn(conn)
 	os.Exit(m.Run())
 }
 
@@ -54,7 +55,7 @@ func TestRecorder(t *testing.T) {
 			WithLogger(testLogger(func(format string, args ...interface{}) {
 				called = true
 			})),
-			clientOpt,
+			WithClientOption(clientOpt),
 		)
 		assert.NoError(t, err)
 
