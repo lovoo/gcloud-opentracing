@@ -4,7 +4,7 @@
  
 ### Getting Started
 -------------------
-To install fcm, use `go get`:
+To install gcloud-opentracing, use `go get`:
 
 ```bash
 go get github.com/lovoo/gcloud-opentracing
