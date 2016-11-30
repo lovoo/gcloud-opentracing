@@ -30,7 +30,9 @@ import (
 
 func main() {
     // ...
-    opentracing.InitGlobalTracer(context.Background(), gcloudtracer.WithProject("project-id"))
+    opentracing.InitGlobalTracer(
+        gcloudtracer.NewTracer(context.Background(), gcloudtracer.WithProject("project-id"))
+    )
     // ...
 }
 ```
