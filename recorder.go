@@ -1,6 +1,7 @@
 package gcloudtracer
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 
@@ -8,8 +9,9 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	basictracer "github.com/opentracing/basictracer-go"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"golang.org/x/net/context"
-	cloudtracepb "google.golang.org/genproto/googleapis/devtools/cloudtrace/v1"
+	pb "google.golang.org/genproto/googleapis/devtools/cloudtrace/v1"
 )
 
 var _ basictracer.SpanRecorder = &Recorder{}
@@ -55,23 +57,28 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 
 // RecordSpan writes Span to the GCLoud StackDriver.
 func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
-	req := &cloudtracepb.PatchTracesRequest{
+	traceID := fmt.Sprintf("%016x%016x", sp.Context.TraceID, sp.Context.TraceID)
+	nanos := sp.Start.UnixNano()
+
+	req := &pb.PatchTracesRequest{
 		ProjectId: r.project,
-		Traces: &cloudtracepb.Traces{
-			Traces: []*cloudtracepb.Trace{
-				&cloudtracepb.Trace{
+		Traces: &pb.Traces{
+			Traces: []*pb.Trace{
+				{
 					ProjectId: r.project,
-					TraceId:   strconv.FormatUint(sp.Context.TraceID, 10),
-					Spans: []*cloudtracepb.TraceSpan{
-						&cloudtracepb.TraceSpan{
+					TraceId:   traceID,
+					Spans: []*pb.TraceSpan{
+						{
 							SpanId: sp.Context.SpanID,
-							Kind:   cloudtracepb.TraceSpan_SPAN_KIND_UNSPECIFIED,
+							Kind:   convertSpanKind(sp.Tags),
 							Name:   sp.Operation,
 							StartTime: &timestamp.Timestamp{
-								Seconds: sp.Start.Unix(),
+								Seconds: nanos / 1e9,
+								Nanos:   int32(nanos % 1e9),
 							},
 							EndTime: &timestamp.Timestamp{
-								Seconds: sp.Start.Add(sp.Duration).Unix(),
+								Seconds: (nanos + int64(sp.Duration)) / 1e9,
+								Nanos:   int32((nanos + int64(sp.Duration)) % 1e9),
 							},
 							ParentSpanId: sp.ParentSpanID,
 							Labels:       convertTags(sp.Tags),
@@ -98,6 +105,17 @@ func convertTags(tags opentracing.Tags) map[string]string {
 		}
 	}
 	return labels
+}
+
+func convertSpanKind(tags opentracing.Tags) pb.TraceSpan_SpanKind {
+	switch tags[string(ext.SpanKind)] {
+	case ext.SpanKindRPCServerEnum:
+		return pb.TraceSpan_RPC_SERVER
+	case ext.SpanKindRPCClientEnum:
+		return pb.TraceSpan_RPC_CLIENT
+	default:
+		return pb.TraceSpan_SPAN_KIND_UNSPECIFIED
+	}
 }
 
 type defaultLogger struct{}
