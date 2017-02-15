@@ -5,6 +5,8 @@ import (
 	"log"
 	"strconv"
 
+	"bytes"
+
 	trace "cloud.google.com/go/trace/apiv1"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	basictracer "github.com/opentracing/basictracer-go"
@@ -59,6 +61,9 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 	traceID := fmt.Sprintf("%016x%016x", sp.Context.TraceID, sp.Context.TraceID)
 	nanos := sp.Start.UnixNano()
+	labels := convertTags(sp.Tags)
+	transposeLabels(labels)
+	addLogs(labels, sp.Logs)
 
 	req := &pb.PatchTracesRequest{
 		ProjectId: r.project,
@@ -81,7 +86,7 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 								Nanos:   int32((nanos + int64(sp.Duration)) % 1e9),
 							},
 							ParentSpanId: sp.ParentSpanID,
-							Labels:       convertTags(sp.Tags),
+							Labels:       labels,
 						},
 					},
 				},
@@ -115,6 +120,39 @@ func convertSpanKind(tags opentracing.Tags) pb.TraceSpan_SpanKind {
 		return pb.TraceSpan_RPC_CLIENT
 	default:
 		return pb.TraceSpan_SPAN_KIND_UNSPECIFIED
+	}
+}
+
+var labelMap = map[string]string{
+	string(ext.PeerHostname):   `trace.cloud.google.com/http/host`,
+	string(ext.HTTPMethod):     `trace.cloud.google.com/http/method`,
+	string(ext.HTTPStatusCode): `trace.cloud.google.com/http/status_code`,
+	string(ext.HTTPUrl):        `trace.cloud.google.com/http/url`,
+}
+
+// rewrite well-known opentracing.ext labels into those gcloud-native labels
+func transposeLabels(labels map[string]string) {
+	for k, t := range labelMap {
+		if vv, ok := labelMap[k]; ok {
+			labels[t] = vv
+			delete(labels, k)
+		}
+	}
+}
+
+// copy opentracing events into gcloud trace labels
+func addLogs(target map[string]string, logs []opentracing.LogRecord) {
+	for i, l := range logs {
+		buf := bytes.NewBufferString(l.Timestamp.String())
+		for j, f := range l.Fields {
+			buf.WriteString(f.Key())
+			buf.WriteString("=")
+			buf.WriteString(fmt.Sprint(f.Value()))
+			if j != len(l.Fields)+1 {
+				buf.WriteString(" ")
+			}
+		}
+		target[fmt.Sprintf("event_%d", i)] = buf.String()
 	}
 }
 
