@@ -133,7 +133,7 @@ var labelMap = map[string]string{
 // rewrite well-known opentracing.ext labels into those gcloud-native labels
 func transposeLabels(labels map[string]string) {
 	for k, t := range labelMap {
-		if vv, ok := labelMap[k]; ok {
+		if vv, ok := labels[k]; ok {
 			labels[t] = vv
 			delete(labels, k)
 		}
