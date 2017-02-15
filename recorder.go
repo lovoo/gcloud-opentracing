@@ -64,7 +64,7 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 		traces := bundle.([]*pb.Trace)
 		err := rec.upload(traces)
 		if err != nil {
-			log.Printf("failed to upload %d traces to the Cloud Trace server.", len(traces))
+			log.Printf("failed to upload %d traces to the Cloud Trace server. (err = %s)", len(traces), err)
 		}
 	})
 	bundler.DelayThreshold = 2 * time.Second
