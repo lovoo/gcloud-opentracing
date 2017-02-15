@@ -1,12 +1,11 @@
 package gcloudtracer
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
-
-	"bytes"
 
 	trace "cloud.google.com/go/trace/apiv1"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -64,7 +63,7 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 		traces := bundle.([]*pb.Trace)
 		err := rec.upload(traces)
 		if err != nil {
-			log.Printf("failed to upload %d traces to the Cloud Trace server. (err = %s)", len(traces), err)
+			rec.log.Errorf("failed to upload %d traces to the Cloud Trace server. (err = %s)", len(traces), err)
 		}
 	})
 	bundler.DelayThreshold = 2 * time.Second
@@ -109,11 +108,11 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 	}
 	go func() {
 		err := r.bundler.Add(trace, 2) // size = (1 trace + 1 span)
-		if err == bundler.ErrOversizedItem {
-			log.Printf("trace upload bundle too full. uploading immediately")
+		if err == bundler.ErrOverflow {
+			r.log.Errorf("trace upload bundle too full. uploading immediately")
 			err = r.upload([]*pb.Trace{trace})
 			if err != nil {
-				log.Println("error uploading trace:", err)
+				r.log.Errorf("error uploading trace: %s", err)
 			}
 		}
 	}()
