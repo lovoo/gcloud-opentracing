@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"bytes"
 
@@ -13,6 +14,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"golang.org/x/net/context"
+	"google.golang.org/api/support/bundler"
 	pb "google.golang.org/genproto/googleapis/devtools/cloudtrace/v1"
 )
 
@@ -30,6 +32,7 @@ type Recorder struct {
 	ctx         context.Context
 	log         Logger
 	traceClient *trace.Client
+	bundler     *bundler.Bundler
 }
 
 // NewRecorder creates new GCloud StackDriver recorder.
@@ -49,12 +52,30 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Recorder{
+
+	rec := &Recorder{
 		project:     options.projectID,
 		ctx:         ctx,
 		traceClient: c,
 		log:         options.log,
-	}, nil
+	}
+
+	bundler := bundler.NewBundler((*pb.Trace)(nil), func(bundle interface{}) {
+		traces := bundle.([]*pb.Trace)
+		err := rec.upload(traces)
+		if err != nil {
+			log.Printf("failed to upload %d traces to the Cloud Trace server.", len(traces))
+		}
+	})
+	bundler.DelayThreshold = 2 * time.Second
+	bundler.BundleCountThreshold = 100
+	// We're not measuring bytes here, we're counting traces and spans as one "byte" each.
+	bundler.BundleByteThreshold = 1000
+	bundler.BundleByteLimit = 1000
+	bundler.BufferedByteLimit = 10000
+	rec.bundler = bundler
+
+	return rec, nil
 }
 
 // RecordSpan writes Span to the GCLoud StackDriver.
@@ -65,38 +86,45 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 	transposeLabels(labels)
 	addLogs(labels, sp.Logs)
 
-	req := &pb.PatchTracesRequest{
+	trace := &pb.Trace{
 		ProjectId: r.project,
-		Traces: &pb.Traces{
-			Traces: []*pb.Trace{
-				{
-					ProjectId: r.project,
-					TraceId:   traceID,
-					Spans: []*pb.TraceSpan{
-						{
-							SpanId: sp.Context.SpanID,
-							Kind:   convertSpanKind(sp.Tags),
-							Name:   sp.Operation,
-							StartTime: &timestamp.Timestamp{
-								Seconds: nanos / 1e9,
-								Nanos:   int32(nanos % 1e9),
-							},
-							EndTime: &timestamp.Timestamp{
-								Seconds: (nanos + int64(sp.Duration)) / 1e9,
-								Nanos:   int32((nanos + int64(sp.Duration)) % 1e9),
-							},
-							ParentSpanId: sp.ParentSpanID,
-							Labels:       labels,
-						},
-					},
+		TraceId:   traceID,
+		Spans: []*pb.TraceSpan{
+			{
+				SpanId: sp.Context.SpanID,
+				Kind:   convertSpanKind(sp.Tags),
+				Name:   sp.Operation,
+				StartTime: &timestamp.Timestamp{
+					Seconds: nanos / 1e9,
+					Nanos:   int32(nanos % 1e9),
 				},
+				EndTime: &timestamp.Timestamp{
+					Seconds: (nanos + int64(sp.Duration)) / 1e9,
+					Nanos:   int32((nanos + int64(sp.Duration)) % 1e9),
+				},
+				ParentSpanId: sp.ParentSpanID,
+				Labels:       labels,
 			},
 		},
 	}
+	go func() {
+		err := r.bundler.Add(trace, 2) // size = (1 trace + 1 span)
+		if err == bundler.ErrOversizedItem {
+			log.Printf("trace upload bundle too full. uploading immediately")
+			err = r.upload([]*pb.Trace{trace})
+			if err != nil {
+				log.Println("error uploading trace:", err)
+			}
+		}
+	}()
+}
 
-	if err := r.traceClient.PatchTraces(r.ctx, req); err != nil {
-		r.log.Errorf("failed to write trace: %v", err)
+func (r *Recorder) upload(traces []*pb.Trace) error {
+	req := &pb.PatchTracesRequest{
+		ProjectId: r.project,
+		Traces:    &pb.Traces{Traces: traces},
 	}
+	return r.traceClient.PatchTraces(r.ctx, req)
 }
 
 func convertTags(tags opentracing.Tags) map[string]string {
