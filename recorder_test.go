@@ -81,7 +81,7 @@ func TestRecorder(t *testing.T) {
 				Traces: []*cloudtracepb.Trace{
 					&cloudtracepb.Trace{
 						ProjectId: "test_project",
-						TraceId:   "1",
+						TraceId:   "00000000000000010000000000000001",
 						Spans: []*cloudtracepb.TraceSpan{
 							&cloudtracepb.TraceSpan{
 								SpanId: 10,
