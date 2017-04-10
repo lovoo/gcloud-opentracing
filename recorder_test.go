@@ -53,13 +53,12 @@ func TestRecorder(t *testing.T) {
 			context.Background(),
 			WithProject("test_project"),
 			WithLogger(testLogger(func(format string, args ...interface{}) {
-				log.Printf(format, args...)
 				called = true
 			})),
 			WithClientOption(clientOpt),
 		)
 		assert.NoError(t, err)
-		// BufferedByteLimit is for test propose, to send the trace immediately
+		// BufferedByteLimit is set to 1 for test propose, to send the trace immediately
 		recorder.bundler.BufferedByteLimit = 1
 
 		recorder.RecordSpan(basictracer.RawSpan{
