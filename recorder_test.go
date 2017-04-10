@@ -58,6 +58,8 @@ func TestRecorder(t *testing.T) {
 			WithClientOption(clientOpt),
 		)
 		assert.NoError(t, err)
+		// BufferedByteLimit is set to 1 for test propose, to send the trace immediately
+		recorder.bundler.BufferedByteLimit = 1
 
 		recorder.RecordSpan(basictracer.RawSpan{
 			Context: basictracer.SpanContext{
@@ -137,4 +139,7 @@ type testLogger func(format string, args ...interface{})
 
 func (l testLogger) Errorf(format string, args ...interface{}) {
 	l(format, args...)
+}
+
+func (l testLogger) Infof(format string, args ...interface{}) {
 }

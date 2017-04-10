@@ -21,6 +21,7 @@ var _ basictracer.SpanRecorder = &Recorder{}
 
 // Logger defines an interface to log an error.
 type Logger interface {
+	Infof(string, ...interface{})
 	Errorf(string, ...interface{})
 }
 
@@ -61,8 +62,7 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 
 	bundler := bundler.NewBundler((*pb.Trace)(nil), func(bundle interface{}) {
 		traces := bundle.([]*pb.Trace)
-		err := rec.upload(traces)
-		if err != nil {
+		if err := rec.upload(traces); err != nil {
 			rec.log.Errorf("failed to upload %d traces to the Cloud Trace server. (err = %s)", len(traces), err)
 		}
 	})
@@ -106,16 +106,16 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 			},
 		},
 	}
-	go func() {
-		err := r.bundler.Add(trace, 2) // size = (1 trace + 1 span)
-		if err == bundler.ErrOverflow {
-			r.log.Errorf("trace upload bundle too full. uploading immediately")
-			err = r.upload([]*pb.Trace{trace})
-			if err != nil {
-				r.log.Errorf("error uploading trace: %s", err)
-			}
+
+	// size = (1 trace + 1 span)
+	if err := r.bundler.Add(trace, 2); err == bundler.ErrOverflow {
+		r.log.Infof("trace upload bundle too full. uploading immediately")
+		if err := r.upload([]*pb.Trace{trace}); err != nil {
+			r.log.Errorf("error uploading trace: %v", err)
 		}
-	}()
+	} else if err != nil {
+		r.log.Errorf("error adding trace to bundle: %v", err)
+	}
 }
 
 func (r *Recorder) upload(traces []*pb.Trace) error {
@@ -186,5 +186,9 @@ func addLogs(target map[string]string, logs []opentracing.LogRecord) {
 type defaultLogger struct{}
 
 func (defaultLogger) Errorf(msg string, args ...interface{}) {
+	log.Printf(msg, args...)
+}
+
+func (defaultLogger) Infof(msg string, args ...interface{}) {
 	log.Printf(msg, args...)
 }

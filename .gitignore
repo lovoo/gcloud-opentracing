@@ -24,4 +24,5 @@ _testmain.go
 *.prof
 
 #custom
+*.lock
 vendor
