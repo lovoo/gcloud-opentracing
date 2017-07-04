@@ -63,6 +63,7 @@ func TestRecorder(t *testing.T) {
 
 		recorder.RecordSpan(basictracer.RawSpan{
 			Context: basictracer.SpanContext{
+				Sampled: true,
 				SpanID:  10,
 				TraceID: 1,
 			},

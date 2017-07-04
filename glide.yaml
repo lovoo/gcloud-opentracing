@@ -3,7 +3,6 @@ ignore:
 - appengine
 import:
 - package: cloud.google.com/go
-  version: ^0.7.0
   subpackages:
   - trace/apiv1
 - package: github.com/golang/protobuf
@@ -11,7 +10,6 @@ import:
   - ptypes/timestamp
 - package: github.com/opentracing/basictracer-go
 - package: github.com/opentracing/opentracing-go
-  version: ^1.0.1
   subpackages:
   - ext
 - package: golang.org/x/net
@@ -25,12 +23,9 @@ import:
   subpackages:
   - googleapis/devtools/cloudtrace/v1
 - package: google.golang.org/grpc
-  version: ^1.2.1
 - package: github.com/googleapis/gax-go
-  version: 8c5154c0fe5bf18cf649634d4c6df50897a32751
 testImport:
 - package: github.com/stretchr/testify
-  version: ^1.1.4
   subpackages:
   - assert
 

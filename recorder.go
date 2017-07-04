@@ -79,6 +79,10 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 
 // RecordSpan writes Span to the GCLoud StackDriver.
 func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
+	if !sp.Context.Sampled {
+		return
+	}
+
 	traceID := fmt.Sprintf("%016x%016x", sp.Context.TraceID, sp.Context.TraceID)
 	nanos := sp.Start.UnixNano()
 	labels := convertTags(sp.Tags)
