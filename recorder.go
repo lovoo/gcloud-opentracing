@@ -36,14 +36,16 @@ type Recorder struct {
 }
 
 // NewRecorder creates new GCloud StackDriver recorder.
-func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
+func NewRecorder(ctx context.Context, projectID string, opts ...Option) (*Recorder, error) {
 	var options Options
 	for _, o := range opts {
 		o(&options)
 	}
-	if err := options.Valid(); err != nil {
-		return nil, err
+
+	if projectID == "" {
+		return nil, ErrInvalidProjectID
 	}
+
 	if options.log == nil {
 		options.log = &defaultLogger{}
 	}
@@ -54,7 +56,7 @@ func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
 	}
 
 	rec := &Recorder{
-		project:     options.projectID,
+		project:     projectID,
 		ctx:         ctx,
 		traceClient: c,
 		log:         options.log,

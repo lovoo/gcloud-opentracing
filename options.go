@@ -15,27 +15,11 @@ var (
 type Options struct {
 	external []option.ClientOption
 
-	log       Logger
-	projectID string
-}
-
-// Valid validates Options.
-func (o *Options) Valid() error {
-	if o.projectID == "" {
-		return ErrInvalidProjectID
-	}
-	return nil
+	log Logger
 }
 
 // Option defines an recorder option.
 type Option func(o *Options)
-
-// WithProject returns a Option that specifies a project identifier.
-func WithProject(pid string) Option {
-	return func(o *Options) {
-		o.projectID = pid
-	}
-}
 
 // WithLogger returns an Option that specifies a logger of the Recorder.
 func WithLogger(logger Logger) Option {

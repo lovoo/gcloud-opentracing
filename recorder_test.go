@@ -51,7 +51,7 @@ func TestRecorder(t *testing.T) {
 		called := false
 		recorder, err := NewRecorder(
 			context.Background(),
-			WithProject("test_project"),
+			"test_project",
 			WithLogger(testLogger(func(format string, args ...interface{}) {
 				called = true
 			})),
@@ -108,6 +108,12 @@ func TestRecorder(t *testing.T) {
 			},
 		}, mockTrace.patchTracesRequest)
 	})
+}
+
+func TestRecorderMissingProjectID(t *testing.T) {
+	r, err := NewRecorder(context.Background(), "")
+	assert.Equal(t, ErrInvalidProjectID, err)
+	assert.Nil(t, r)
 }
 
 type mockTraceServer struct {

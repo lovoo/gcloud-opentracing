@@ -7,8 +7,8 @@ import (
 )
 
 // NewTracer creates new basictracer for GCloud StackDriver.
-func NewTracer(ctx context.Context, opts ...Option) (opentracing.Tracer, error) {
-	recorder, err := NewRecorder(ctx, opts...)
+func NewTracer(ctx context.Context, projectID string, opts ...Option) (opentracing.Tracer, error) {
+	recorder, err := NewRecorder(ctx, projectID, opts...)
 	if err != nil {
 		return nil, err
 	}

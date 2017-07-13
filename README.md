@@ -1,7 +1,7 @@
 [![GoDoc](https://godoc.org/github.com/lovoo/gcloud-opentracing?status.svg)](http://godoc.org/github.com/lovoo/gcloud-opentracing)
 # gcloud-opentracing
  OpenTracing Tracer implementation for GCloud StackDriver in Go. Based on [basictracer](https://github.com/opentracing/basictracer-go) and implemented `Recorder` for this propose.
- 
+
 ### Getting Started
 -------------------
 To install gcloud-opentracing, use `go get`:
@@ -31,7 +31,7 @@ import (
 func main() {
     // ...
     opentracing.InitGlobalTracer(
-        gcloudtracer.NewTracer(context.Background(), gcloudtracer.WithProject("project-id"))
+        gcloudtracer.NewTracer(context.Background(), "project-id")
     )
     // ...
 }

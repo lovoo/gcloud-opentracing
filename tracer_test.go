@@ -11,7 +11,7 @@ func TestTracer(t *testing.T) {
 	t.Run("tracer=success", func(t *testing.T) {
 		tracer, err := NewTracer(
 			context.Background(),
-			WithProject("test_project"),
+			"project_id",
 			WithLogger(&defaultLogger{}),
 			WithClientOption(clientOpt),
 		)
@@ -22,6 +22,7 @@ func TestTracer(t *testing.T) {
 	t.Run("tracer=failed", func(t *testing.T) {
 		tracer, err := NewTracer(
 			context.Background(),
+			"",
 		)
 		assert.Error(t, err)
 		assert.Nil(t, tracer)
