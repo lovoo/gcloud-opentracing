@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	trace "cloud.google.com/go/trace/apiv1"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	gax "github.com/googleapis/gax-go"
 	basictracer "github.com/opentracing/basictracer-go"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
@@ -25,36 +25,39 @@ type Logger interface {
 	Errorf(string, ...interface{})
 }
 
+// TraceClient is the interface of the Google StackDriver Trace client.
+type TraceClient interface {
+	PatchTraces(context.Context, *pb.PatchTracesRequest, ...gax.CallOption) error
+	Close() error
+}
+
 // Recorder implements basictracer.SpanRecorder interface
 // used to write traces to the GCE StackDriver.
 type Recorder struct {
 	project     string
 	ctx         context.Context
 	log         Logger
-	traceClient *trace.Client
+	traceClient TraceClient
 	bundler     *bundler.Bundler
 }
 
 // NewRecorder creates new GCloud StackDriver recorder.
-func NewRecorder(ctx context.Context, opts ...Option) (*Recorder, error) {
+func NewRecorder(ctx context.Context, projectID string, c TraceClient, opts ...Option) (*Recorder, error) {
+	if projectID == "" {
+		return nil, ErrInvalidProjectID
+	}
+
 	var options Options
 	for _, o := range opts {
 		o(&options)
 	}
-	if err := options.Valid(); err != nil {
-		return nil, err
-	}
+
 	if options.log == nil {
 		options.log = &defaultLogger{}
 	}
 
-	c, err := trace.NewClient(ctx, options.external...)
-	if err != nil {
-		return nil, err
-	}
-
 	rec := &Recorder{
-		project:     options.projectID,
+		project:     projectID,
 		ctx:         ctx,
 		traceClient: c,
 		log:         options.log,
@@ -120,6 +123,12 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 	} else if err != nil {
 		r.log.Errorf("error adding trace to bundle: %v", err)
 	}
+}
+
+// Close flushes all the recorder traces and closes the client.
+func (r *Recorder) Close() error {
+	r.bundler.Flush()
+	return r.traceClient.Close()
 }
 
 func (r *Recorder) upload(traces []*pb.Trace) error {
