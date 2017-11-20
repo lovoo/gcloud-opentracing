@@ -91,6 +91,7 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 	labels := convertTags(sp.Tags)
 	transposeLabels(labels)
 	addLogs(labels, sp.Logs)
+	sp.Operation = sp.Operation + getSpanKind(sp.Tags)
 
 	trace := &pb.Trace{
 		ProjectId: r.project,
@@ -150,6 +151,17 @@ func convertTags(tags opentracing.Tags) map[string]string {
 		}
 	}
 	return labels
+}
+
+func getSpanKind(tags opentracing.Tags) string {
+	switch tags[string(ext.SpanKind)] {
+	case ext.SpanKindRPCServerEnum:
+		return "rpc_server"
+	case ext.SpanKindRPCClientEnum:
+		return "rpc_client"
+	default:
+		return ""
+	}
 }
 
 func convertSpanKind(tags opentracing.Tags) pb.TraceSpan_SpanKind {
