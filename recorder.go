@@ -156,9 +156,9 @@ func convertTags(tags opentracing.Tags) map[string]string {
 func getSpanKind(tags opentracing.Tags) string {
 	switch tags[string(ext.SpanKind)] {
 	case ext.SpanKindRPCServerEnum:
-		return "rpc_server"
+		return "-rpc_server"
 	case ext.SpanKindRPCClientEnum:
-		return "rpc_client"
+		return "-rpc_client"
 	default:
 		return ""
 	}
@@ -167,9 +167,9 @@ func getSpanKind(tags opentracing.Tags) string {
 func convertSpanKind(tags opentracing.Tags) pb.TraceSpan_SpanKind {
 	switch tags[string(ext.SpanKind)] {
 	case ext.SpanKindRPCServerEnum:
-		return "-" + pb.TraceSpan_RPC_SERVER
+		return pb.TraceSpan_RPC_SERVER
 	case ext.SpanKindRPCClientEnum:
-		return "-" + pb.TraceSpan_RPC_CLIENT
+		return pb.TraceSpan_RPC_CLIENT
 	default:
 		return pb.TraceSpan_SPAN_KIND_UNSPECIFIED
 	}
