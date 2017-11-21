@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -144,10 +143,14 @@ func convertTags(tags opentracing.Tags) map[string]string {
 	labels := make(map[string]string)
 	for k, v := range tags {
 		switch v := v.(type) {
-		case int:
-			labels[k] = strconv.Itoa(v)
 		case string:
 			labels[k] = v
+		case bool, int, int32, int64, float32, float64, uint32, uint64:
+			labels[k] = fmt.Sprintf("%v", v)
+		default:
+			if str, ok := v.(fmt.Stringer); ok {
+				labels[k] = str.String()
+			}
 		}
 	}
 	return labels

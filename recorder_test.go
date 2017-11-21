@@ -19,6 +19,12 @@ func TestTraceClientImplementation(t *testing.T) {
 	_ = client
 }
 
+type stringer struct{}
+
+func (s stringer) String() string {
+	return "string!"
+}
+
 func TestRecorderClosing(t *testing.T) {
 	patchTracesCalled := false
 	closeCalled := false
@@ -46,8 +52,11 @@ func TestRecorderClosing(t *testing.T) {
 									},
 									ParentSpanId: 9,
 									Labels: map[string]string{
-										"foo": "10",
-										"bar": "foo",
+										"foo":      "10",
+										"bar":      "foo",
+										"bool":     "true",
+										"float":    "4.2",
+										"stringer": "string!",
 									},
 								},
 							},
@@ -79,8 +88,11 @@ func TestRecorderClosing(t *testing.T) {
 		Start:        time.Unix(1480425868, 0),
 		Duration:     5 * time.Second,
 		Tags: map[string]interface{}{
-			"foo": 10,
-			"bar": "foo",
+			"foo":      10,
+			"bar":      "foo",
+			"bool":     true,
+			"float":    4.2,
+			"stringer": &stringer{},
 		},
 	})
 
