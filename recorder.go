@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -91,6 +90,7 @@ func (r *Recorder) RecordSpan(sp basictracer.RawSpan) {
 	labels := convertTags(sp.Tags)
 	transposeLabels(labels)
 	addLogs(labels, sp.Logs)
+	sp.Operation = sp.Operation + getSpanKind(sp.Tags)
 
 	trace := &pb.Trace{
 		ProjectId: r.project,
@@ -143,13 +143,28 @@ func convertTags(tags opentracing.Tags) map[string]string {
 	labels := make(map[string]string)
 	for k, v := range tags {
 		switch v := v.(type) {
-		case int:
-			labels[k] = strconv.Itoa(v)
 		case string:
 			labels[k] = v
+		case bool, int, int32, int64, float32, float64, uint32, uint64:
+			labels[k] = fmt.Sprintf("%v", v)
+		default:
+			if str, ok := v.(fmt.Stringer); ok {
+				labels[k] = str.String()
+			}
 		}
 	}
 	return labels
+}
+
+func getSpanKind(tags opentracing.Tags) string {
+	switch tags[string(ext.SpanKind)] {
+	case ext.SpanKindRPCServerEnum:
+		return "-rpc_server"
+	case ext.SpanKindRPCClientEnum:
+		return "-rpc_client"
+	default:
+		return ""
+	}
 }
 
 func convertSpanKind(tags opentracing.Tags) pb.TraceSpan_SpanKind {
